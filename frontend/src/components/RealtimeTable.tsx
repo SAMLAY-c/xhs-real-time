@@ -44,7 +44,9 @@ export function RealtimeTable() {
       header: '封面',
       cell: ({ row }) => {
         const post = row.original;
-        const imageList = post.image_list ? post.image_list.split(',') : [];
+        // Handle both string and array types for image_list
+        const imageList = post.image_list ?
+          (typeof post.image_list === 'string' ? post.image_list.split(',') : post.image_list) : [];
         const firstImage = imageList[0];
 
         return (
@@ -216,23 +218,27 @@ export function RealtimeTable() {
   });
 
   return (
-    <div className="bg-card rounded-lg border shadow-sm">
+    <div className="bg-card rounded-lg border shadow-sm h-full flex flex-col">
       {/* Table Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <h2 className="text-lg font-semibold">实时数据流 ({posts.length} 条)</h2>
+      <div className="p-4 border-b flex items-center justify-between bg-muted/20">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <span>实时数据流</span>
+          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md text-sm font-mono">
+            {posts.length} 条
+          </span>
+        </h2>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
               checked={autoScroll}
               onChange={() => {
-                // This would be handled by the store
                 const store = useCrawlerStore.getState();
                 store.toggleAutoScroll();
               }}
-              className="rounded"
+              className="rounded border-input"
             />
-            自动滚动
+            <span>自动滚动</span>
           </label>
         </div>
       </div>
@@ -240,7 +246,7 @@ export function RealtimeTable() {
       {/* Table Container */}
       <div
         ref={tableContainerRef}
-        className="max-h-96 overflow-y-auto"
+        className="flex-1 overflow-y-auto"
       >
         <table className="w-full">
           <thead className="sticky top-0 bg-background z-10 border-b">
@@ -249,7 +255,7 @@ export function RealtimeTable() {
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left font-medium bg-muted/50"
+                    className="px-3 py-2.5 text-left font-medium text-xs bg-muted/50 text-muted-foreground uppercase tracking-wider"
                   >
                     {header.isPlaceholder
                       ? null
@@ -259,22 +265,22 @@ export function RealtimeTable() {
               </tr>
             ))}
           </thead>
-          <tbody>
+          <tbody className="divide-y">
             {table.getRowModel().rows.map((row) => (
               <React.Fragment key={row.id}>
-                <tr className="border-b hover:bg-muted/50 transition-colors">
+                <tr className="hover:bg-muted/30 transition-colors">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
+                    <td key={cell.id} className="px-3 py-2.5 text-sm">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
                 </tr>
                 {expandedRows.has(row.original.note_id) && (
-                  <tr className="bg-muted/20">
-                    <td colSpan={columns.length} className="px-4 py-3">
+                  <tr className="bg-muted/10">
+                    <td colSpan={columns.length} className="px-3 py-2">
                       <div className="space-y-2">
-                        <h4 className="font-semibold text-sm">原始数据 (JSON)</h4>
-                        <pre className="text-xs bg-background p-3 rounded-md overflow-x-auto max-h-40">
+                        <h4 className="font-semibold text-sm text-muted-foreground">原始数据 (JSON)</h4>
+                        <pre className="text-xs bg-muted/30 p-3 rounded-md overflow-x-auto max-h-40 font-mono">
                           {JSON.stringify(row.original, null, 2)}
                         </pre>
                       </div>
@@ -287,13 +293,12 @@ export function RealtimeTable() {
         </table>
 
         {posts.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                <Eye className="w-6 h-6" />
-              </div>
-              <p>暂无数据，请先启动爬虫</p>
+          <div className="text-center py-12 text-muted-foreground h-full flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Eye className="w-8 h-8" />
             </div>
+            <p className="text-lg font-medium">暂无数据</p>
+            <p className="text-sm mt-1">请先启动爬虫开始采集</p>
           </div>
         )}
       </div>
