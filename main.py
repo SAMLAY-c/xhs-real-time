@@ -27,13 +27,7 @@ import cmd_arg
 import config
 from database import db
 from base.base_crawler import AbstractCrawler
-from media_platform.bilibili import BilibiliCrawler
-from media_platform.douyin import DouYinCrawler
-from media_platform.kuaishou import KuaishouCrawler
-from media_platform.tieba import TieBaCrawler
-from media_platform.weibo import WeiboCrawler
 from media_platform.xhs import XiaoHongShuCrawler
-from media_platform.zhihu import ZhihuCrawler
 from tools.async_file_writer import AsyncFileWriter
 from var import crawler_type_var
 
@@ -41,12 +35,12 @@ from var import crawler_type_var
 class CrawlerFactory:
     CRAWLERS = {
         "xhs": XiaoHongShuCrawler,
-        "dy": DouYinCrawler,
-        "ks": KuaishouCrawler,
-        "bili": BilibiliCrawler,
-        "wb": WeiboCrawler,
-        "tieba": TieBaCrawler,
-        "zhihu": ZhihuCrawler,
+        # "dy": DouYinCrawler,
+        # "ks": KuaishouCrawler,
+        # "bili": BilibiliCrawler,
+        # "wb": WeiboCrawler,
+        # "tieba": TieBaCrawler,
+        # "zhihu": ZhihuCrawler,
     }
 
     @staticmethod
@@ -54,7 +48,7 @@ class CrawlerFactory:
         crawler_class = CrawlerFactory.CRAWLERS.get(platform)
         if not crawler_class:
             raise ValueError(
-                "Invalid Media Platform Currently only supported xhs or dy or ks or bili ..."
+                "Invalid Media Platform Currently only supported xhs"
             )
         return crawler_class()
 

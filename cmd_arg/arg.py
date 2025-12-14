@@ -40,12 +40,12 @@ class PlatformEnum(str, Enum):
     """支持的媒体平台枚举"""
 
     XHS = "xhs"
-    DOUYIN = "dy"
-    KUAISHOU = "ks"
-    BILIBILI = "bili"
-    WEIBO = "wb"
-    TIEBA = "tieba"
-    ZHIHU = "zhihu"
+    # DOUYIN = "dy"
+    # KUAISHOU = "ks"
+    # BILIBILI = "bili"
+    # WEIBO = "wb"
+    # TIEBA = "tieba"
+    # ZHIHU = "zhihu"
 
 
 class LoginTypeEnum(str, Enum):
@@ -143,7 +143,7 @@ async def parse_cmd(argv: Optional[Sequence[str]] = None):
             PlatformEnum,
             typer.Option(
                 "--platform",
-                help="媒体平台选择 (xhs=小红书 | dy=抖音 | ks=快手 | bili=哔哩哔哩 | wb=微博 | tieba=百度贴吧 | zhihu=知乎)",
+                help="媒体平台选择 (xhs=小红书)",
                 rich_help_panel="基础配置",
             ),
         ] = _coerce_enum(PlatformEnum, config.PLATFORM, PlatformEnum.XHS),
