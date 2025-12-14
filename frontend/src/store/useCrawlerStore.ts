@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import { CrawlPost, ConnectionStatus, WebSocketMessage } from '@/types';
 
+const SESSION_STORAGE_KEY = 'crawler_session_id';
+
 interface CrawlerStore {
   // State
   posts: CrawlPost[];
+  logs: string[];
+  crawledCount: number;
+  isRunning: boolean;
   connectionStatus: ConnectionStatus;
   isLoading: boolean;
   autoScroll: boolean;
@@ -12,17 +17,24 @@ interface CrawlerStore {
   // Actions
   setPosts: (posts: CrawlPost[]) => void;
   addPost: (post: CrawlPost) => void;
+  addLogs: (logs: string[]) => void;
+  addLog: (log: string) => void;
+  updateStats: (count: number, isRunning: boolean) => void;
   updateConnectionStatus: (status: Partial<ConnectionStatus>) => void;
   setLoading: (loading: boolean) => void;
   toggleAutoScroll: () => void;
   setSessionId: (sessionId: string | null) => void;
   clearPosts: () => void;
+  clearLogs: () => void;
   clearSession: () => void;
 }
 
 export const useCrawlerStore = create<CrawlerStore>((set) => ({
   // Initial state
   posts: [],
+  logs: [],
+  crawledCount: 0,
+  isRunning: false,
   connectionStatus: {
     connected: false,
   },
@@ -37,6 +49,19 @@ export const useCrawlerStore = create<CrawlerStore>((set) => ({
     posts: [...state.posts, post],
   })),
 
+  addLogs: (logs) => set((state) => ({
+    logs: [...state.logs, ...logs],
+  })),
+
+  addLog: (log) => set((state) => ({
+    logs: [...state.logs, log],
+  })),
+
+  updateStats: (count, isRunning) => set({
+    crawledCount: count,
+    isRunning: isRunning,
+  }),
+
   updateConnectionStatus: (status) => set((state) => ({
     connectionStatus: { ...state.connectionStatus, ...status },
   })),
@@ -47,17 +72,36 @@ export const useCrawlerStore = create<CrawlerStore>((set) => ({
     autoScroll: !state.autoScroll,
   })),
 
-  setSessionId: (sessionId) => set({ sessionId }),
+  setSessionId: (sessionId) => {
+    if (typeof window !== 'undefined') {
+      if (sessionId) {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+      } else {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
+    return { sessionId };
+  },
 
   clearPosts: () => set({ posts: [] }),
 
-  clearSession: () => set({
-    posts: [],
-    sessionId: null,
-    connectionStatus: {
-      connected: false,
-    },
-  }),
+  clearLogs: () => set({ logs: [] }),
+
+  clearSession: () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+    return {
+      posts: [],
+      logs: [],
+      crawledCount: 0,
+      isRunning: false,
+      sessionId: null,
+      connectionStatus: {
+        connected: false,
+      },
+    };
+  },
 }));
 
 // WebSocket connection hook
@@ -66,6 +110,9 @@ export const useWebSocketConnection = () => {
     sessionId,
     updateConnectionStatus,
     addPost,
+    addLogs,
+    addLog,
+    updateStats,
   } = useCrawlerStore();
 
   const connect = (newSessionId: string): WebSocket | null => {
@@ -87,31 +134,56 @@ export const useWebSocketConnection = () => {
 
       ws.onmessage = (event) => {
         try {
-          const message: WebSocketMessage = JSON.parse(event.data);
+          // 首先尝试解析为JSON，处理结构化消息
+          const data = JSON.parse(event.data);
 
-          switch (message.type) {
+          switch (data.type) {
             case 'status':
               updateConnectionStatus({
-                status: message.status,
-                lastMessage: message.message,
+                status: data.status,
+                lastMessage: data.message,
               });
               break;
 
             case 'data':
-              if (message.data) {
-                addPost(message.data);
+              if (data.data) {
+                addPost(data.data);
               }
+              break;
+
+            case 'stats':
+              updateStats(data.crawled_count, data.status === 'running');
+              updateConnectionStatus({
+                status: data.status,
+                lastMessage: data.error_message,
+              });
               break;
 
             case 'error':
               updateConnectionStatus({
                 status: 'error',
-                lastMessage: message.message,
+                lastMessage: data.message,
               });
+              break;
+
+            default:
+              // 未知消息类型，作为日志处理
+              addLog(JSON.stringify(data));
               break;
           }
         } catch (error) {
-          console.error('❌ Error parsing WebSocket message:', error);
+          // JSON解析失败，说明是纯文本日志
+          if (typeof event.data === 'string') {
+            // 检查是否包含换行符，可能是历史日志批量发送
+            if (event.data.includes('\n')) {
+              const historyLines = event.data.split('\n').filter(line => line.trim());
+              addLogs(historyLines);
+            } else {
+              addLog(event.data);
+            }
+          } else {
+            console.error('❌ Unexpected WebSocket message type:', typeof event.data);
+          }
         }
       };
 
